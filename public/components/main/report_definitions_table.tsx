@@ -109,7 +109,7 @@ export function ReportDefinitions(props) {
   };
 
   const navigateToDefinitionDetails = (name: any) => {
-    let id = getDefinitionTableItemId(name);
+    const id = getDefinitionTableItemId(name);
     window.location.assign(
       `reports-dashboards#/report_definition_details/${id}`
     );
@@ -172,7 +172,7 @@ export function ReportDefinitions(props) {
         { defaultMessage: 'Last Updated' }
       ),
       render: (date) => {
-        let readable = humanReadableDate(date);
+        const readable = humanReadableDate(date);
         return <EuiText size="s">{readable}</EuiText>;
       },
     },

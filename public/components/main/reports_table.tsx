@@ -163,7 +163,7 @@ export function ReportsTable(props) {
         { defaultMessage: 'Creation time' }
       ),
       render: (date) => {
-        let readable = humanReadableDate(date);
+        const readable = humanReadableDate(date);
         return <EuiText size="s">{readable}</EuiText>;
       },
     },
