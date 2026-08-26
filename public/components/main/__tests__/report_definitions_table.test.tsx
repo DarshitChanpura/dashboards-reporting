@@ -4,7 +4,13 @@
  */
 
 import React from 'react';
-import { act, fireEvent, render, screen, waitFor } from '@testing-library/react';
+import {
+  act,
+  fireEvent,
+  render,
+  screen,
+  waitFor,
+} from '@testing-library/react';
 import { ReportDefinitions } from '../report_definitions_table';
 import { isResourceSharingAvailable } from '../../utils/resource_sharing_service';
 
@@ -20,7 +26,7 @@ const pagination = {
 
 describe('<ReportDefinitions /> panel', () => {
   test('render component', () => {
-    let reportDefinitionsTableContent = [
+    const reportDefinitionsTableContent = [
       {
         reportName: 'test report name',
         type: 'Download',
@@ -60,7 +66,7 @@ describe('<ReportDefinitions /> panel', () => {
   });
 
   test('test click on report definition row', async () => {
-    let reportDefinitionsTableContent = [
+    const reportDefinitionsTableContent = [
       {
         reportName: 'test report name',
         type: 'Download',

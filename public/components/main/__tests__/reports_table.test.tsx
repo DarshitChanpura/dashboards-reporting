@@ -4,7 +4,13 @@
  */
 
 import React from 'react';
-import { act, fireEvent, render, screen, waitFor } from '@testing-library/react';
+import {
+  act,
+  fireEvent,
+  render,
+  screen,
+  waitFor,
+} from '@testing-library/react';
 import { ReportsTable } from '../reports_table';
 import { isResourceSharingAvailable } from '../../utils/resource_sharing_service';
 import httpClientMock from '../../../../test/httpMockClient';
@@ -21,7 +27,7 @@ const pagination = {
 
 describe('<ReportsTable /> panel', () => {
   test('render component', () => {
-    let reportsTableItems = [
+    const reportsTableItems = [
       {
         id: '1',
         reportName: 'test report table item',
@@ -56,7 +62,7 @@ describe('<ReportsTable /> panel', () => {
   });
 
   test('click on generate button', async () => {
-    let reportsTableItems = [
+    const reportsTableItems = [
       {
         id: '1',
         reportName: 'test report table item',
