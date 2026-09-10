@@ -13,10 +13,8 @@ export const REPORT_DEFINITION_RESOURCE_TYPE = 'report-definition';
 export const REPORT_INSTANCE_RESOURCE_TYPE = 'report-instance';
 
 /**
- * Resource types for which resource sharing is available on the given data
- * source (or the local cluster when no data source id is provided). Empty
- * when the security plugin is not installed, resource sharing is disabled on
- * that source, or no shareable types are registered there.
+ * Resource-sharing types available on the given data source (feature flag +
+ * per-type list). Returns [] when disabled or on error.
  */
 export const getResourceSharingAvailableTypes = async (
   resourceDataSourceId?: string
