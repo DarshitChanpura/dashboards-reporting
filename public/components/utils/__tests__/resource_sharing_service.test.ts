@@ -21,7 +21,7 @@ const withHttpResponses = (
   resourceTypes?: any
 ): jest.Mock => {
   const get = jest.fn((path: string) => {
-    if (path === '/api/v1/auth/dashboardsinfo') {
+    if (path === '/api/v1/auth/resource_sharing_enabled') {
       return Promise.resolve(dashboardsInfo);
     }
     if (path === '/api/resource/types') {
@@ -42,11 +42,11 @@ describe('getResourceSharingAvailableTypes', () => {
   });
 
   it('returns [] when resource sharing is disabled on the source', async () => {
-    withHttpResponses({ resource_sharing_enabled: false });
+    withHttpResponses({ enabled: false });
     await expect(getResourceSharingAvailableTypes()).resolves.toEqual([]);
   });
 
-  it('returns [] when the dashboardsinfo request fails', async () => {
+  it('returns [] when the resource_sharing_enabled request fails', async () => {
     mockGetHttpClient.mockReturnValue({
       get: jest.fn().mockRejectedValue(new Error('boom')),
     });
@@ -55,7 +55,7 @@ describe('getResourceSharingAvailableTypes', () => {
 
   it('returns the registered types when resource sharing is enabled', async () => {
     withHttpResponses(
-      { resource_sharing_enabled: true },
+      { enabled: true },
       {
         types: [
           { type: REPORT_DEFINITION_RESOURCE_TYPE },
@@ -70,7 +70,7 @@ describe('getResourceSharingAvailableTypes', () => {
   });
 
   it('supports a bare-array types response and drops malformed entries', async () => {
-    withHttpResponses({ resource_sharing_enabled: true }, [
+    withHttpResponses({ enabled: true }, [
       { type: REPORT_DEFINITION_RESOURCE_TYPE },
       {},
     ]);
@@ -81,11 +81,11 @@ describe('getResourceSharingAvailableTypes', () => {
 
   it('forwards the selected data source id to both routes', async () => {
     const get = withHttpResponses(
-      { resource_sharing_enabled: true },
+      { enabled: true },
       { types: [] }
     );
     await getResourceSharingAvailableTypes('ds-1');
-    expect(get).toHaveBeenCalledWith('/api/v1/auth/dashboardsinfo', {
+    expect(get).toHaveBeenCalledWith('/api/v1/auth/resource_sharing_enabled', {
       query: { dataSourceId: 'ds-1' },
     });
     expect(get).toHaveBeenCalledWith('/api/resource/types', {
@@ -95,11 +95,11 @@ describe('getResourceSharingAvailableTypes', () => {
 
   it('sends an empty query when no data source id is given', async () => {
     const get = withHttpResponses(
-      { resource_sharing_enabled: true },
+      { enabled: true },
       { types: [] }
     );
     await getResourceSharingAvailableTypes();
-    expect(get).toHaveBeenCalledWith('/api/v1/auth/dashboardsinfo', {
+    expect(get).toHaveBeenCalledWith('/api/v1/auth/resource_sharing_enabled', {
       query: {},
     });
   });
