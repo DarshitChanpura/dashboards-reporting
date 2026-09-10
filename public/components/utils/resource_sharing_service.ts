@@ -3,7 +3,7 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-import { applicationService } from './application_service';
+import { uiSettingsService } from './settings_service';
 
 /**
  * Resource types registered by the reports-scheduler backend plugin with the
@@ -13,21 +13,31 @@ export const REPORT_DEFINITION_RESOURCE_TYPE = 'report-definition';
 export const REPORT_INSTANCE_RESOURCE_TYPE = 'report-instance';
 
 /**
- * Whether resource sharing is available for the given reporting resource
- * type, via the core capability registered by security-dashboards-plugin.
- * False when that plugin is not installed, the feature is disabled, or the
- * type is not registered — no plugin dependency involved.
+ * Resource types for which resource sharing is available on the given data
+ * source (or the local cluster when no data source id is provided). Empty
+ * when the security plugin is not installed, resource sharing is disabled on
+ * that source, or no shareable types are registered there.
  */
-export function isResourceSharingAvailable(
-  resourceType: string = REPORT_DEFINITION_RESOURCE_TYPE
-): boolean {
+export const getResourceSharingAvailableTypes = async (
+  resourceDataSourceId?: string
+): Promise<string[]> => {
   try {
-    const caps = (applicationService.getApplication()?.capabilities as any)
-      ?.resourceSharing;
-    if (!caps?.enabled) return false;
-    const types: string = caps.availableTypes ?? '';
-    return types.split(',').includes(resourceType);
+    const http = uiSettingsService.getHttpClient();
+    const query = resourceDataSourceId
+      ? { dataSourceId: resourceDataSourceId }
+      : {};
+    // Global gate: resource sharing must be enabled on the selected data source.
+    const info: any = await http.get('/api/v1/auth/dashboardsinfo', { query });
+    if (!info?.resource_sharing_enabled) return [];
+    // Per-type gate: the registered/protected shareable types on that source.
+    const typesResp: any = await http.get('/api/resource/types', { query });
+    const rawTypes = Array.isArray(typesResp)
+      ? typesResp
+      : (typesResp?.types ?? []);
+    return rawTypes
+      .map((entry: { type: string }) => entry?.type)
+      .filter((type: string | undefined): type is string => Boolean(type));
   } catch (e) {
-    return false;
+    return [];
   }
-}
+};

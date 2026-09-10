@@ -3,72 +3,104 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-jest.mock('../application_service', () => ({
-  applicationService: { getApplication: jest.fn() },
+jest.mock('../settings_service', () => ({
+  uiSettingsService: { getHttpClient: jest.fn() },
 }));
 
 import {
-  isResourceSharingAvailable,
+  getResourceSharingAvailableTypes,
+  REPORT_DEFINITION_RESOURCE_TYPE,
   REPORT_INSTANCE_RESOURCE_TYPE,
 } from '../resource_sharing_service';
-import { applicationService } from '../application_service';
+import { uiSettingsService } from '../settings_service';
 
-const mockGetApplication = applicationService.getApplication as jest.Mock;
+const mockGetHttpClient = uiSettingsService.getHttpClient as jest.Mock;
 
-const withResourceSharing = (resourceSharing?: Record<string, unknown>) =>
-  mockGetApplication.mockReturnValue({
-    capabilities: resourceSharing ? { resourceSharing } : {},
+const withHttpResponses = (
+  dashboardsInfo: any,
+  resourceTypes?: any
+): jest.Mock => {
+  const get = jest.fn((path: string) => {
+    if (path === '/api/v1/auth/dashboardsinfo') {
+      return Promise.resolve(dashboardsInfo);
+    }
+    if (path === '/api/resource/types') {
+      return Promise.resolve(resourceTypes);
+    }
+    return Promise.reject(new Error(`unexpected path ${path}`));
+  });
+  mockGetHttpClient.mockReturnValue({ get });
+  return get;
+};
+
+describe('getResourceSharingAvailableTypes', () => {
+  afterEach(() => mockGetHttpClient.mockReset());
+
+  it('returns [] when the http client has not been initialized', async () => {
+    mockGetHttpClient.mockReturnValue(undefined);
+    await expect(getResourceSharingAvailableTypes()).resolves.toEqual([]);
   });
 
-describe('isResourceSharingAvailable', () => {
-  afterEach(() => mockGetApplication.mockReset());
-
-  it('returns false when getApplication has not been initialized', () => {
-    mockGetApplication.mockReturnValue(undefined);
-    expect(isResourceSharingAvailable()).toBe(false);
+  it('returns [] when resource sharing is disabled on the source', async () => {
+    withHttpResponses({ resource_sharing_enabled: false });
+    await expect(getResourceSharingAvailableTypes()).resolves.toEqual([]);
   });
 
-  it('returns false when the resourceSharing capability is absent', () => {
-    withResourceSharing();
-    expect(isResourceSharingAvailable()).toBe(false);
-  });
-
-  it('returns false when resource sharing is disabled', () => {
-    withResourceSharing({
-      enabled: false,
-      availableTypes: 'report-definition',
+  it('returns [] when the dashboardsinfo request fails', async () => {
+    mockGetHttpClient.mockReturnValue({
+      get: jest.fn().mockRejectedValue(new Error('boom')),
     });
-    expect(isResourceSharingAvailable()).toBe(false);
+    await expect(getResourceSharingAvailableTypes()).resolves.toEqual([]);
   });
 
-  it('returns false when the resource type is not in availableTypes', () => {
-    withResourceSharing({
-      enabled: true,
-      availableTypes: 'workflow,anomaly-detector',
-    });
-    expect(isResourceSharingAvailable()).toBe(false);
-  });
-
-  it('defaults to the report-definition type and returns true when present', () => {
-    withResourceSharing({
-      enabled: true,
-      availableTypes: 'report-definition,workflow',
-    });
-    expect(isResourceSharingAvailable()).toBe(true);
-  });
-
-  it('supports the report-instance type explicitly', () => {
-    withResourceSharing({ enabled: true, availableTypes: 'report-instance' });
-    expect(isResourceSharingAvailable(REPORT_INSTANCE_RESOURCE_TYPE)).toBe(
-      true
+  it('returns the registered types when resource sharing is enabled', async () => {
+    withHttpResponses(
+      { resource_sharing_enabled: true },
+      {
+        types: [
+          { type: REPORT_DEFINITION_RESOURCE_TYPE },
+          { type: REPORT_INSTANCE_RESOURCE_TYPE },
+        ],
+      }
     );
-    expect(isResourceSharingAvailable()).toBe(false);
+    await expect(getResourceSharingAvailableTypes()).resolves.toEqual([
+      'report-definition',
+      'report-instance',
+    ]);
   });
 
-  it('returns false and swallows errors when getApplication throws', () => {
-    mockGetApplication.mockImplementation(() => {
-      throw new Error('application not ready');
+  it('supports a bare-array types response and drops malformed entries', async () => {
+    withHttpResponses({ resource_sharing_enabled: true }, [
+      { type: REPORT_DEFINITION_RESOURCE_TYPE },
+      {},
+    ]);
+    await expect(getResourceSharingAvailableTypes()).resolves.toEqual([
+      'report-definition',
+    ]);
+  });
+
+  it('forwards the selected data source id to both routes', async () => {
+    const get = withHttpResponses(
+      { resource_sharing_enabled: true },
+      { types: [] }
+    );
+    await getResourceSharingAvailableTypes('ds-1');
+    expect(get).toHaveBeenCalledWith('/api/v1/auth/dashboardsinfo', {
+      query: { dataSourceId: 'ds-1' },
     });
-    expect(isResourceSharingAvailable()).toBe(false);
+    expect(get).toHaveBeenCalledWith('/api/resource/types', {
+      query: { dataSourceId: 'ds-1' },
+    });
+  });
+
+  it('sends an empty query when no data source id is given', async () => {
+    const get = withHttpResponses(
+      { resource_sharing_enabled: true },
+      { types: [] }
+    );
+    await getResourceSharingAvailableTypes();
+    expect(get).toHaveBeenCalledWith('/api/v1/auth/dashboardsinfo', {
+      query: {},
+    });
   });
 });

@@ -3,7 +3,7 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import {
   EuiLink,
   EuiInMemoryTable,
@@ -14,7 +14,7 @@ import {
 import { i18n } from '@osd/i18n';
 import { humanReadableDate } from './main_utils';
 import {
-  isResourceSharingAvailable,
+  getResourceSharingAvailableTypes,
   REPORT_DEFINITION_RESOURCE_TYPE,
 } from '../utils/resource_sharing_service';
 
@@ -83,10 +83,22 @@ const reportDefinitionsSearch = {
 };
 
 export function ReportDefinitions(props) {
-  const { pagination, reportDefinitionsTableContent } = props;
+  const { pagination, reportDefinitionsTableContent, dataSourceId } = props;
 
   const [sortField, setSortField] = useState('lastUpdated');
   const [sortDirection, setSortDirection] = useState('des');
+  const [resourceSharingAvailableTypes, setResourceSharingAvailableTypes] =
+    useState<string[]>([]);
+
+  useEffect(() => {
+    let cancelled = false;
+    getResourceSharingAvailableTypes(dataSourceId).then((types) => {
+      if (!cancelled) setResourceSharingAvailableTypes(types);
+    });
+    return () => {
+      cancelled = true;
+    };
+  }, [dataSourceId]);
 
   const sorting = {
     sort: {
@@ -185,7 +197,7 @@ export function ReportDefinitions(props) {
       sortable: true,
       truncateText: false,
     },
-    ...(isResourceSharingAvailable()
+    ...(resourceSharingAvailableTypes.includes(REPORT_DEFINITION_RESOURCE_TYPE)
       ? [
           {
             // Resource-sharing SPI marker column: the centralized Share button
@@ -198,17 +210,20 @@ export function ReportDefinitions(props) {
             ),
             sortable: false,
             width: '5%',
-            render: (id: string, item: any) => (
-              <div
-                data-resource-share-button
-                data-resource-id={id}
-                {...(item?.reportName
-                  ? { 'data-resource-name': item?.reportName }
-                  : {})}
-                data-resource-type={REPORT_DEFINITION_RESOURCE_TYPE}
-                data-resource-share-display="icon"
-              />
-            ),
+            render: (id: string, item: any) =>
+              resourceSharingAvailableTypes.includes(
+                REPORT_DEFINITION_RESOURCE_TYPE
+              ) ? (
+                <div
+                  data-resource-share-button
+                  data-resource-id={id}
+                  {...(item?.reportName
+                    ? { 'data-resource-name': item?.reportName }
+                    : {})}
+                  data-resource-type={REPORT_DEFINITION_RESOURCE_TYPE}
+                  data-resource-share-display="icon"
+                />
+              ) : null,
           },
         ]
       : []),

@@ -12,12 +12,16 @@ import {
   waitFor,
 } from '@testing-library/react';
 import { ReportDefinitions } from '../report_definitions_table';
-import { isResourceSharingAvailable } from '../../utils/resource_sharing_service';
+import { getResourceSharingAvailableTypes } from '../../utils/resource_sharing_service';
 
 jest.mock('../../utils/resource_sharing_service', () => ({
-  isResourceSharingAvailable: jest.fn(),
+  getResourceSharingAvailableTypes: jest.fn(),
   REPORT_DEFINITION_RESOURCE_TYPE: 'report-definition',
 }));
+
+beforeEach(() =>
+  (getResourceSharingAvailableTypes as jest.Mock).mockResolvedValue([])
+);
 
 const pagination = {
   initialPageSize: 10,
@@ -120,18 +124,24 @@ describe('<ReportDefinitions /> resource sharing Access column', () => {
     },
   ];
 
-  afterEach(() => (isResourceSharingAvailable as jest.Mock).mockReset());
+  afterEach(() => (getResourceSharingAvailableTypes as jest.Mock).mockReset());
 
-  test('renders the Access column with a share-button marker when resource sharing is available', () => {
-    (isResourceSharingAvailable as jest.Mock).mockReturnValue(true);
+  test('renders the Access column with a share-button marker when resource sharing is available', async () => {
+    (getResourceSharingAvailableTypes as jest.Mock).mockResolvedValue([
+      'report-definition',
+    ]);
     const { container } = render(
       <ReportDefinitions
         pagination={pagination}
         reportDefinitionsTableContent={content}
       />
     );
+    await waitFor(() => {
+      expect(
+        container.querySelector('[data-resource-share-button]')
+      ).not.toBeNull();
+    });
     const marker = container.querySelector('[data-resource-share-button]');
-    expect(marker).not.toBeNull();
     expect(marker!.getAttribute('data-resource-id')).toBe('definition-1');
     expect(marker!.getAttribute('data-resource-type')).toBe(
       'report-definition'
@@ -142,14 +152,15 @@ describe('<ReportDefinitions /> resource sharing Access column', () => {
     expect(marker!.getAttribute('data-resource-share-display')).toBe('icon');
   });
 
-  test('does not render the Access column when resource sharing is unavailable', () => {
-    (isResourceSharingAvailable as jest.Mock).mockReturnValue(false);
+  test('does not render the Access column when resource sharing is unavailable', async () => {
+    (getResourceSharingAvailableTypes as jest.Mock).mockResolvedValue([]);
     const { container } = render(
       <ReportDefinitions
         pagination={pagination}
         reportDefinitionsTableContent={content}
       />
     );
+    await act(async () => {});
     expect(container.querySelector('[data-resource-share-button]')).toBeNull();
   });
 });
