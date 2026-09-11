@@ -17,8 +17,8 @@ import { uiSettingsService } from '../settings_service';
 const mockGetHttpClient = uiSettingsService.getHttpClient as jest.Mock;
 
 const withHttpResponses = (
-  dashboardsInfo: any,
-  resourceTypes?: any
+  dashboardsInfo: unknown,
+  resourceTypes?: unknown
 ): jest.Mock => {
   const get = jest.fn((path: string) => {
     if (path === '/api/v1/auth/resource_sharing_enabled') {
