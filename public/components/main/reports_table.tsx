@@ -3,7 +3,7 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-import React, { Fragment, useState } from 'react';
+import React, { Fragment, useEffect, useState } from 'react';
 import { i18n } from '@osd/i18n';
 import {
   // @ts-ignore
@@ -18,6 +18,10 @@ import {
   humanReadableDate,
   generateReportById,
 } from './main_utils';
+import {
+  getResourceSharingAvailableTypes,
+  REPORT_INSTANCE_RESOURCE_TYPE,
+} from '../utils/resource_sharing_service';
 import { GenerateReportLoadingModal } from './loading_modal';
 
 const reportStatusOptions = [
@@ -83,12 +87,25 @@ export function ReportsTable(props) {
     handleSuccessToast,
     handleErrorToast,
     handlePermissionsMissingToast,
+    dataSourceId,
   } = props;
 
   const [sortField, setSortField] = useState('timeCreated');
   const [sortDirection, setSortDirection] = useState('des');
   const [showLoading, setShowLoading] = useState(false);
   const [message, setMessage] = useState('');
+  const [resourceSharingAvailableTypes, setResourceSharingAvailableTypes] =
+    useState<string[]>([]);
+
+  useEffect(() => {
+    let cancelled = false;
+    getResourceSharingAvailableTypes(dataSourceId).then((types) => {
+      if (!cancelled) setResourceSharingAvailableTypes(types);
+    });
+    return () => {
+      cancelled = true;
+    };
+  }, [dataSourceId]);
 
   const handleLoading = (e) => {
     setShowLoading(e);
@@ -159,7 +176,7 @@ export function ReportsTable(props) {
         { defaultMessage: 'Creation time' }
       ),
       render: (date) => {
-        let readable = humanReadableDate(date);
+        const readable = humanReadableDate(date);
         return <EuiText size="s">{readable}</EuiText>;
       },
     },
@@ -192,6 +209,36 @@ export function ReportsTable(props) {
           </EuiLink>
         ),
     },
+    ...(resourceSharingAvailableTypes.includes(REPORT_INSTANCE_RESOURCE_TYPE)
+      ? [
+          {
+            // Resource-sharing SPI marker column: the centralized Share button
+            // is mounted here by security-dashboards-plugin when installed and
+            // resource sharing is enabled for report instances.
+            field: 'id',
+            name: i18n.translate(
+              'opensearch.reports.reportsTable.reportsTableColumns.share',
+              { defaultMessage: 'Access' }
+            ),
+            sortable: false,
+            width: '5%',
+            render: (id: string, item: any) =>
+              resourceSharingAvailableTypes.includes(
+                REPORT_INSTANCE_RESOURCE_TYPE
+              ) ? (
+                <div
+                  data-resource-share-button
+                  data-resource-id={id}
+                  {...(item?.reportName
+                    ? { 'data-resource-name': item?.reportName }
+                    : {})}
+                  data-resource-type={REPORT_INSTANCE_RESOURCE_TYPE}
+                  data-resource-share-display="icon"
+                />
+              ) : null,
+          },
+        ]
+      : []),
   ];
 
   const sorting = {
