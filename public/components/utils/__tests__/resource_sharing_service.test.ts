@@ -80,10 +80,7 @@ describe('getResourceSharingAvailableTypes', () => {
   });
 
   it('forwards the selected data source id to both routes', async () => {
-    const get = withHttpResponses(
-      { enabled: true },
-      { types: [] }
-    );
+    const get = withHttpResponses({ enabled: true }, { types: [] });
     await getResourceSharingAvailableTypes('ds-1');
     expect(get).toHaveBeenCalledWith('/api/v1/auth/resource_sharing_enabled', {
       query: { dataSourceId: 'ds-1' },
@@ -94,10 +91,7 @@ describe('getResourceSharingAvailableTypes', () => {
   });
 
   it('sends an empty query when no data source id is given', async () => {
-    const get = withHttpResponses(
-      { enabled: true },
-      { types: [] }
-    );
+    const get = withHttpResponses({ enabled: true }, { types: [] });
     await getResourceSharingAvailableTypes();
     expect(get).toHaveBeenCalledWith('/api/v1/auth/resource_sharing_enabled', {
       query: {},
