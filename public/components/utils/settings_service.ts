@@ -4,14 +4,21 @@
  */
 
 import { HttpStart, IUiSettingsClient } from '../../../../../src/core/public';
+import { SecurityPluginStart } from '../../../../security-dashboards-plugin/public/types';
 
 let uiSettings: IUiSettingsClient;
 let http: HttpStart;
+let securityDashboards: SecurityPluginStart | undefined;
 
 export const uiSettingsService = {
-  init: (uiSettingsClient: IUiSettingsClient, httpClient: HttpStart) => {
+  init: (
+    uiSettingsClient: IUiSettingsClient,
+    httpClient: HttpStart,
+    securityDashboardsStart?: SecurityPluginStart
+  ) => {
     uiSettings = uiSettingsClient;
     http = httpClient;
+    securityDashboards = securityDashboardsStart;
   },
   get: (key: string, defaultOverride?: any) => {
     return uiSettings?.get(key, defaultOverride) || '';
@@ -33,4 +40,10 @@ export const uiSettingsService = {
     };
   },
   getHttpClient: () => http,
+  // Optional: only set when security-dashboards-plugin is installed (see
+  // plugin.ts start()). Presence alone doesn't guarantee its client-side
+  // DOM-marker SPI is running -- use
+  // securityDashboards.ui.isResourceSharingAvailable, which is itself gated
+  // on that, rather than presence alone.
+  getSecurityDashboards: () => securityDashboards,
 };

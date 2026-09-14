@@ -4,6 +4,7 @@
  */
 
 import { NavigationPublicPluginStart } from '../../../src/plugins/navigation/public';
+import { SecurityPluginStart } from '../../security-dashboards-plugin/public/types';
 
 export interface ReportsDashboardsPluginSetup {}
 
@@ -12,4 +13,5 @@ export interface ReportsDashboardsPluginStart {}
 
 export interface AppPluginStartDependencies {
   navigation: NavigationPublicPluginStart;
+  securityDashboards?: SecurityPluginStart;
 }

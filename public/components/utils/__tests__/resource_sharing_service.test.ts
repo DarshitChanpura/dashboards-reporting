@@ -4,7 +4,10 @@
  */
 
 jest.mock('../settings_service', () => ({
-  uiSettingsService: { getHttpClient: jest.fn() },
+  uiSettingsService: {
+    getHttpClient: jest.fn(),
+    getSecurityDashboards: jest.fn(),
+  },
 }));
 
 import {
@@ -15,6 +18,8 @@ import {
 import { uiSettingsService } from '../settings_service';
 
 const mockGetHttpClient = uiSettingsService.getHttpClient as jest.Mock;
+const mockGetSecurityDashboards =
+  uiSettingsService.getSecurityDashboards as jest.Mock;
 
 const withHttpResponses = (
   dashboardsInfo: unknown,
@@ -33,8 +38,26 @@ const withHttpResponses = (
   return get;
 };
 
+// By default, security-dashboards-plugin's local-SPI check confirms every
+// type it is asked about. Individual tests override this per case.
+const mockSecurityDashboards = (
+  spiConfirms: (type: string) => boolean = () => true
+) => {
+  mockGetSecurityDashboards.mockReturnValue({
+    ui: {
+      isResourceSharingAvailable: (type: string) =>
+        Promise.resolve(spiConfirms(type)),
+    },
+  });
+};
+
 describe('getResourceSharingAvailableTypes', () => {
-  afterEach(() => mockGetHttpClient.mockReset());
+  beforeEach(() => mockSecurityDashboards());
+
+  afterEach(() => {
+    mockGetHttpClient.mockReset();
+    mockGetSecurityDashboards.mockReset();
+  });
 
   it('returns [] when the http client has not been initialized', async () => {
     mockGetHttpClient.mockReturnValue(undefined);
@@ -53,7 +76,7 @@ describe('getResourceSharingAvailableTypes', () => {
     await expect(getResourceSharingAvailableTypes()).resolves.toEqual([]);
   });
 
-  it('returns the registered types when resource sharing is enabled', async () => {
+  it('returns the registered types when resource sharing is enabled and the local SPI confirms each one', async () => {
     withHttpResponses(
       { enabled: true },
       {
@@ -96,5 +119,46 @@ describe('getResourceSharingAvailableTypes', () => {
     expect(get).toHaveBeenCalledWith('/api/v1/auth/resource_sharing_enabled', {
       query: {},
     });
+  });
+
+  it('returns [] without probing when security-dashboards-plugin is not installed', async () => {
+    mockGetSecurityDashboards.mockReturnValue(undefined);
+    const get = withHttpResponses(
+      { enabled: true },
+      { types: [{ type: REPORT_DEFINITION_RESOURCE_TYPE }] }
+    );
+    await expect(getResourceSharingAvailableTypes()).resolves.toEqual([]);
+    expect(get).not.toHaveBeenCalled();
+  });
+
+  it('drops a type that the backend reports as registered but the local SPI does not confirm', async () => {
+    // Simulates: local cluster has resource sharing disabled (so the SPI
+    // never started) while the selected data source reports it enabled.
+    mockSecurityDashboards((type) => type === REPORT_INSTANCE_RESOURCE_TYPE);
+    withHttpResponses(
+      { enabled: true },
+      {
+        types: [
+          { type: REPORT_DEFINITION_RESOURCE_TYPE },
+          { type: REPORT_INSTANCE_RESOURCE_TYPE },
+        ],
+      }
+    );
+    await expect(getResourceSharingAvailableTypes()).resolves.toEqual([
+      REPORT_INSTANCE_RESOURCE_TYPE,
+    ]);
+  });
+
+  it('drops a type when the local SPI confirmation throws', async () => {
+    mockGetSecurityDashboards.mockReturnValue({
+      ui: {
+        isResourceSharingAvailable: () => Promise.reject(new Error('boom')),
+      },
+    });
+    withHttpResponses(
+      { enabled: true },
+      { types: [{ type: REPORT_DEFINITION_RESOURCE_TYPE }] }
+    );
+    await expect(getResourceSharingAvailableTypes()).resolves.toEqual([]);
   });
 });

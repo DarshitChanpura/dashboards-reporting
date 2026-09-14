@@ -26,9 +26,10 @@ export interface ReportingPluginSetupDependencies {
   dataSource: DataSourcePluginSetup;
 }
 
-export class ReportsDashboardsPlugin
-  implements
-    Plugin<ReportsDashboardsPluginSetup, ReportsDashboardsPluginStart> {
+export class ReportsDashboardsPlugin implements Plugin<
+  ReportsDashboardsPluginSetup,
+  ReportsDashboardsPluginStart
+> {
   public setup(
     core: CoreSetup,
     { dataSource }: ReportingPluginSetupDependencies
@@ -54,6 +55,13 @@ export class ReportsDashboardsPlugin
           const { renderApp } = await import('./application');
           // Get start services as specified in opensearch_dashboards.json
           const [coreStart, depsStart] = await core.getStartServices();
+          const { securityDashboards } =
+            depsStart as AppPluginStartDependencies;
+          uiSettingsService.init(
+            core.uiSettings,
+            core.http,
+            securityDashboards
+          );
           // Render the application
           return renderApp(
             coreStart,
